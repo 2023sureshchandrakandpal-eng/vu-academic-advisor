@@ -532,7 +532,9 @@ def chunk_markdown(md, doc, doc_label, target=1100):
                            "text": f"[{crumb}]\n{body}",
                            "citation": ", ".join(x for x in (doc_label, section.split(" – ")[-1] if section else None, cl, page_txt) if x),
                            "meta": {"section": section, "heading": heading, "clauses": clauses,
-                                    "pdf_pages": sorted({p for p, _ in pages}), "printed_pages": printed}})
+                                    "pdf_pages": sorted({p for p, _ in pages}), "printed_pages": printed,
+                                    "source_file": "4. Student Handbook Aug 2026.pdf" if doc == "handbook" else "SOP STUDENT 17082026 - Final.pdf",
+                                    "exact_text": body}})
         buf.clear()
         pages.clear()
         if page[0]:
@@ -631,6 +633,30 @@ def build_cards(options, offerings, baskets, minors, minor_summary, terms, issue
         if i["severity"] == "warning":
             cards.append({"id": f"issue::{i['id']}", "doc_type": "issue", "text": f"Data/policy conflict: {i['title']}. {i['detail']}",
                           "citation": "; ".join(i["sources"]) or "derived check", "meta": {"issue_id": i["id"]}})
+
+    # Attach stable provenance to every retrieval card.  This data is used by both
+    # citations and the source-navigation endpoint; it is never inferred from the text at answer time.
+    for card in cards:
+        meta = card.setdefault("meta", {})
+        if card["doc_type"] == "terms":
+            meta.update(source_file="4. Student Handbook Aug 2026.pdf", pdf_page=15, exact_text=card["text"])
+        elif card["doc_type"] == "minor":
+            meta.update(source_file="MinorCoursesforBTech_Students.xlsx",
+                        sheet=card["citation"].split("›", 1)[1].strip() if "›" in card["citation"] else None,
+                        locator=None, exact_text=card["text"])
+        elif card["doc_type"] == "issue":
+            meta.update(source_file="Semester_Spread_Structures_Sept_2026.xlsx",
+                        sheet=None, locator=None, exact_text=card["text"])
+        else:
+            match = re.search(r"›\s*([^›]+)›\s*(.+)$", card["citation"])
+            sheet = match.group(1).strip() if match else None
+            locator = match.group(2).strip() if match else None
+            meta.update(source_file="Semester_Spread_Structures_Sept_2026.xlsx",
+                        sheet=sheet, locator=locator, exact_text=card["text"])
+            if card["doc_type"] == "basket":
+                batch = meta.get("batch")
+                meta.update(source_file="Semester_Spread_Structures_Sept_2026.xlsx",
+                            sheet=f"Struct_{batch}" if batch else None, locator=None)
     return cards
 
 

@@ -1413,6 +1413,14 @@ function addSystemNotice(msg) {
 
 function renderSourcesAccordion(sources) {
   if (!sources || !sources.length) return null;
+  function sourceUrl(s) {
+    const p = new URLSearchParams({filename: s.source_file || ''});
+    if (s.pdf_page) p.set('page', s.pdf_page);
+    if (s.sheet) p.set('sheet', s.sheet);
+    if (s.locator) p.set('locator', s.locator);
+    if (s.snippet || s.exact_text) p.set('text', s.exact_text || s.snippet);
+    return '/api/source-view?' + p.toString();
+  }
   const box = document.createElement('details');
   box.className = 'sources-box';
   box.innerHTML = `
@@ -1427,13 +1435,13 @@ function renderSourcesAccordion(sources) {
     </summary>
     <div class="sources-list">
       ${sources.map(s => `
-        <div class="source-card" data-src-id="${esc(s.id)}">
+        <a class="source-card" data-src-id="${esc(s.id)}" data-source-url="${esc(sourceUrl(s))}" href="${esc(sourceUrl(s))}" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:inherit">
           <div class="source-card-header">
             <span class="source-badge">${esc(s.id)}</span>
             <span>${esc(s.citation)}</span>
           </div>
           ${s.snippet ? `<div class="source-snippet">${esc(s.snippet)}</div>` : ''}
-        </div>
+        </a>
       `).join('')}
     </div>
   `;
@@ -1453,6 +1461,7 @@ stream.addEventListener('click', e => {
   details.querySelectorAll('.source-card.highlight').forEach(el => el.classList.remove('highlight'));
   targetCard.classList.add('highlight');
   targetCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  window.open(targetCard.dataset.sourceUrl, '_blank', 'noopener,noreferrer');
 });
 
 // ----------------- Ask Flow -----------------

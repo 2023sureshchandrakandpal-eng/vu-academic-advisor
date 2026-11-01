@@ -128,8 +128,36 @@ def run_tools(state: State):
         for k, cite in enumerate(res.get("sources", []), 1):
             sid = f"S{len(evidence) + 1}"
             ids[k] = sid
-            evidence[sid] = {"citation": cite, "tool": name, "snippet": _snippets(res["result"], k)}
-        payload = {"result": _globalize(res["result"], ids), "sources": {ids[k]: c for k, c in enumerate(res.get("sources", []), 1)}}
+            if isinstance(cite, dict):
+                citation = cite.get("citation", "")
+                source = dict(cite)
+            else:
+                citation = str(cite)
+                source = {}
+                lower = citation.lower()
+                if "student handbook" in lower:
+                    source = {"source_file": "4. Student Handbook Aug 2026.pdf",
+                              "pdf_page": int(re.search(r"p\.?\s*(\d+)", citation).group(1)) if re.search(r"p\.?\s*(\d+)", citation) else None,
+                              "exact_text": _snippets(res["result"], k)}
+                elif "minorcourses" in lower or "minorcourse" in lower:
+                    source = {"source_file": "MinorCoursesforBTech_Students.xlsx",
+                              "exact_text": _snippets(res["result"], k)}
+                elif "sop" in lower:
+                    source = {"source_file": "SOP STUDENT 17082026 - Final.pdf",
+                              "exact_text": _snippets(res["result"], k)}
+                else:
+                    source = {"source_file": "Semester_Spread_Structures_Sept_2026.xlsx",
+                              "exact_text": _snippets(res["result"], k)}
+            evidence[sid] = {
+                "citation": citation,
+                "tool": name,
+                "snippet": _snippets(res["result"], k),
+                **source,
+            }
+        payload = {"result": _globalize(res["result"], ids), "sources": {
+            ids[k]: (c.get("citation", "") if isinstance(c, dict) else c)
+            for k, c in enumerate(res.get("sources", []), 1)
+        }}
         out.append(ToolMessage(json.dumps(payload, ensure_ascii=False, default=str)[:24000], tool_call_id=call["id"], name=name))
     return {"messages": out, "evidence": evidence, "rounds": state.get("rounds", 0) + 1}
 

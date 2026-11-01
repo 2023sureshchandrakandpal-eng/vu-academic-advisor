@@ -456,7 +456,14 @@ def search_documents(query: str, scope: str = "all", k: int = 6):
     hits = search(query, scope=scope, k=k)
     sources, out = [], []
     for h in hits:
-        sources.append(h["citation"])
+        sources.append({
+            "citation": h["citation"],
+            "source_file": h.get("meta", {}).get("source_file"),
+            "sheet": h.get("meta", {}).get("sheet"),
+            "locator": h.get("meta", {}).get("locator"),
+            "pdf_page": h.get("meta", {}).get("pdf_pages", [None])[0] if h.get("meta", {}).get("pdf_pages") else None,
+            "exact_text": h.get("meta", {}).get("exact_text") or h["text"][:1400],
+        })
         out.append({"src": len(sources), "citation": h["citation"], "text": h["text"][:1400]})
     result = {"passages": out}
     if not hits or hits[0]["weak"]:
